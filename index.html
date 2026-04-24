@@ -180,6 +180,7 @@ header {
   display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
 }
 
+.item-details { flex-grow: 1; }
 .item-details .name { font-weight: 700; font-size: 1rem; }
 .item-details .meta { font-size: 0.8rem; color: var(--text-muted); }
 
@@ -470,13 +471,11 @@ function getPreviousDebt() {
   return Math.max(0, total - paid);
 }
 
-// CORRIGIDO: Calcula dívida bruta apenas do mês visualizado + parcelamentos totais
 function calculateBruteDebt() {
   const parcelasTotal = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
   const key = getDbKey();
   const fixosMes = state.months[key]?.fixos || [];
   const fixosPendentesMes = fixosMes.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
-  
   return parcelasTotal + fixosPendentesMes;
 }
 
@@ -498,7 +497,6 @@ function render() {
   const totalMonth = allCurrent.reduce((s, i) => s + i.amount, 0) + prevDebt;
   const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
   
-  // "Restante Total Mês" = O que falta no mês atual + Dívida total de parcelamentos
   const restanteMesReal = (totalMonth - paidMonth) + parcelasPendente;
   
   document.getElementById('res-total').textContent = fmt(totalMonth);
