@@ -301,18 +301,18 @@ footer {
   <div class="summary-grid">
     <div class="card debt-total-panel">
       <div>
-        <div class="card-label">Dívida Bruta (Fixos Mês + Parcelados)</div>
+        <div class="card-label">Dívida Bruta (Mês Atual + Parcelados)</div>
         <div class="card-value" id="res-debt-bruta">R$ 0,00</div>
       </div>
     </div>
 
     <div class="card" style="border-top: 5px solid var(--primary); background: #f1f5f9;">
-      <div class="card-label">Falta Pagar (Fixos Mês)</div>
-      <div class="card-value" id="res-pending-fixos" style="color: var(--primary);">R$ 0,00</div>
+      <div class="card-label">Restante no Mês</div>
+      <div class="card-value" id="res-pending-month" style="color: var(--primary);">R$ 0,00</div>
     </div>
     
     <div class="card">
-      <div class="card-label">Previsto no Mês</div>
+      <div class="card-label">Total do Mês</div>
       <div class="card-value" id="res-total">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--success);">
@@ -320,8 +320,8 @@ footer {
       <div class="card-value" id="res-paid" style="color: var(--success);">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--danger);">
-      <div class="card-label">Dívida Parcelada + Mês</div>
-      <div class="card-value" id="res-pending" style="color: var(--danger);">R$ 0,00</div>
+      <div class="card-label">Pendente Parcelamentos</div>
+      <div class="card-value" id="res-pending-installments" style="color: var(--danger);">R$ 0,00</div>
     </div>
   </div>
 
@@ -349,6 +349,7 @@ footer {
   </footer>
 </div>
 
+<!-- Modais e JS permanecem com a lógica atualizada -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-header" id="modal-title">Novo Lançamento</div>
@@ -380,7 +381,7 @@ footer {
       </div>
     </div>
     <div class="input-group">
-      <label>Vencimento</label>
+      <label>Vencimento / Obs</label>
       <input type="text" id="in-due" placeholder="Ex: Dia 10">
     </div>
     <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -471,37 +472,33 @@ function getPreviousDebt() {
   return Math.max(0, total - paid);
 }
 
-function calculateBruteDebt() {
-  const parcelasTotal = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
-  const key = getDbKey();
-  const fixosMes = state.months[key]?.fixos || [];
-  const fixosPendentesMes = fixosMes.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
-  return parcelasTotal + fixosPendentesMes;
-}
-
 function render() {
   const key = getDbKey();
   const monthData = state.months[key];
   const prevDebt = getPreviousDebt();
-  const bruteTotal = calculateBruteDebt();
+  
+  // LÓGICA DE DÍVIDAS:
+  // 1. Saldo de Parcelamentos (Focado apenas na dívida de longo prazo)
   const parcelasPendente = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
   
-  document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
+  // 2. Mês Atual
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
-  
-  document.getElementById('res-debt-bruta').textContent = fmt(bruteTotal);
-
-  const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
-  document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
-
-  const totalMonth = allCurrent.reduce((s, i) => s + i.amount, 0) + prevDebt;
+  const totalMonthOnly = allCurrent.reduce((s, i) => s + i.amount, 0);
+  const totalMonthWithPrev = totalMonthOnly + prevDebt;
   const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
-  
-  const restanteMesReal = (totalMonth - paidMonth) + parcelasPendente;
-  
-  document.getElementById('res-total').textContent = fmt(totalMonth);
+  const pendingMonth = Math.max(0, totalMonthWithPrev - paidMonth);
+
+  // 3. Dívida Bruta (O que ainda falta pagar no mês + o saldo total de parcelas)
+  const bruteTotal = pendingMonth + parcelasPendente;
+
+  // Atualização da UI
+  document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
+  document.getElementById('res-debt-bruta').textContent = fmt(bruteTotal);
+  document.getElementById('res-pending-month').textContent = fmt(pendingMonth);
+  document.getElementById('res-total').textContent = fmt(totalMonthWithPrev);
   document.getElementById('res-paid').textContent = fmt(paidMonth);
-  document.getElementById('res-pending').textContent = fmt(restanteMesReal);
+  document.getElementById('res-pending-installments').textContent = fmt(parcelasPendente);
+  
   document.getElementById('prev-debt-indicator').style.display = prevDebt > 0 ? 'block' : 'none';
 
   let list = [];
@@ -660,11 +657,11 @@ function confirmPayment() {
     const item = state.parcelamentos.find(i => i.id === currentPayId);
     if (item) {
       item.amount -= val;
-      if (item.amount <= 0) {
-         state.parcelamentos = state.parcelamentos.filter(i => i.id !== currentPayId);
-         toast("Parcelamento quitado!");
+      if (item.amount <= 0.01) { // Lida com arredondamentos
+          state.parcelamentos = state.parcelamentos.filter(i => i.id !== currentPayId);
+          toast("Parcelamento quitado!");
       } else {
-         toast(`Amortizado ${fmt(val)}.`);
+          toast(`Amortizado ${fmt(val)}.`);
       }
     }
   } else {
