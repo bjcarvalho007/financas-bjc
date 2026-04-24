@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças Mensais</title>
+<title>Finanças Mensais - BJC</title>
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -261,6 +261,7 @@ footer {
   border-radius: 8px;
   border: 1px solid var(--border);
   font-family: inherit;
+  font-size: 1rem;
 }
 
 #toast {
@@ -281,8 +282,8 @@ footer {
 @media (max-width: 600px) {
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .debt-total-panel { grid-column: 1 / span 2; flex-direction: column; align-items: flex-start; gap: 10px; }
-  .item-right { flex-direction: column; align-items: flex-end; }
-  .item-right .btn-action { display: none; } /* Simplificar mobile */
+  .item-right { flex-direction: row; align-items: center; }
+  .item-right .btn-action { margin-left: 5px; }
 }
 </style>
 </head>
@@ -297,7 +298,6 @@ footer {
   </header>
 
   <div class="summary-grid">
-    <!-- NOVO PAINEL DE DÍVIDA BRUTA -->
     <div class="card debt-total-panel">
       <div>
         <div class="card-label">Dívida Bruta Total (Fixos + Parcelados)</div>
@@ -475,19 +475,14 @@ function getPreviousDebt() {
   return Math.max(0, total - paid);
 }
 
-// CÁLCULO DA DÍVIDA BRUTA TOTAL
 function calculateBruteDebt() {
-  // 1. Saldo devedor de parcelamentos
   const parcelasTotal = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
-  
-  // 2. Saldo devedor de fixos pendentes em todos os meses já registrados
   let fixosPendentesTotal = 0;
   Object.keys(state.months).forEach(key => {
     state.months[key].fixos.forEach(item => {
       fixosPendentesTotal += (item.amount - (item.paid_amount || 0));
     });
   });
-
   return { total: parcelasTotal + fixosPendentesTotal, parcelas: parcelasTotal };
 }
 
@@ -500,11 +495,9 @@ function render() {
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
   
-  // Atualizar Painel de Dívida Bruta
   document.getElementById('res-debt-bruta').textContent = fmt(brute.total);
   document.getElementById('res-parcelas-total').textContent = fmt(brute.parcelas);
 
-  // Cards Mensais
   const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
   document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
 
@@ -552,8 +545,8 @@ function render() {
           <button class="btn-pay ${isPaid ? 'paid' : (pAmount > 0 ? 'partial' : '')}" onclick="openPayModal(${item.id})">
             ${isPaid ? 'PAGO' : (pAmount > 0 ? 'PARCIAL' : 'PAGAR')}
           </button>
-          <button class="btn-action" onclick="editItem(${item.id})">✏️</button>
-          <button class="btn-action btn-del" onclick="deleteItem(${item.id})">🗑️</button>
+          <button class="btn-action" title="Editar" onclick="editItem(${item.id})">✏️</button>
+          <button class="btn-action btn-del" title="Excluir" onclick="deleteItem(${item.id})">🗑️</button>
         </div>
       </div>
     `;
@@ -567,6 +560,7 @@ function clearForm() {
   document.getElementById('in-name').value = ''; 
   document.getElementById('in-amount').value = '';
   document.getElementById('in-due').value = '';
+  document.getElementById('in-cat').value = 'outros';
   document.getElementById('modal-title').textContent = "Novo Lançamento";
 }
 
@@ -577,11 +571,14 @@ function openAddModal() {
 
 function editItem(id) {
   let item;
+  const key = getDbKey();
+  
   if (currentTab === 'parcelas') {
     item = state.parcelamentos.find(i => i.id === id);
+  } else if (currentTab === 'fixos') {
+    item = state.months[key].fixos.find(i => i.id === id);
   } else {
-    const key = getDbKey();
-    item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
+    item = state.months[key].variaveis.find(i => i.id === id);
   }
 
   if (!item) return;
@@ -597,29 +594,38 @@ function editItem(id) {
 }
 
 function saveExpense() {
-  const id = document.getElementById('edit-id').value;
+  const idStr = document.getElementById('edit-id').value;
   const name = document.getElementById('in-name').value;
   const amount = parseFloat(document.getElementById('in-amount').value);
   const cat = document.getElementById('in-cat').value;
   const due = document.getElementById('in-due').value;
 
-  if (!name || isNaN(amount)) return;
+  if (!name || isNaN(amount)) {
+      toast("Preencha nome e valor corretamente.");
+      return;
+  }
 
-  if (id) {
+  if (idStr) {
+    const id = parseFloat(idStr);
     if (currentTab === 'parcelas') {
-      const idx = state.parcelamentos.findIndex(i => i.id == id);
+      const idx = state.parcelamentos.findIndex(i => i.id === id);
       if (idx !== -1) state.parcelamentos[idx] = { ...state.parcelamentos[idx], name, amount, cat, due };
     } else {
       const key = getDbKey();
       const listName = currentTab === 'fixos' ? 'fixos' : 'variaveis';
-      const idx = state.months[key][listName].findIndex(i => i.id == id);
+      const idx = state.months[key][listName].findIndex(i => i.id === id);
       
       if (idx !== -1) {
         const item = state.months[key][listName][idx];
         state.months[key][listName][idx] = { ...item, name, amount, cat, due };
-        if (item.masterId) {
-          const mIdx = state.fixosMaster.findIndex(f => f.id === item.masterId);
-          if (mIdx !== -1) state.fixosMaster[mIdx] = { ...state.fixosMaster[mIdx], name, amount, cat, due };
+        
+        // Se for fixo, atualizar apenas este mês para manter histórico
+        // Mas se quiser atualizar o "Modelo Master" para os próximos meses:
+        if (item.masterId && currentTab === 'fixos') {
+           const mIdx = state.fixosMaster.findIndex(f => f.id === item.masterId);
+           if (mIdx !== -1) {
+              state.fixosMaster[mIdx] = { ...state.fixosMaster[mIdx], name, amount, cat, due };
+           }
         }
       }
     }
@@ -699,7 +705,9 @@ function deleteItem(id) {
   } else {
     const key = getDbKey();
     const item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
-    if (item && item.masterId) {
+    if (item && item.masterId && currentTab === 'fixos') {
+      // Se apagar o fixo, perguntar se quer apagar dos meses futuros também?
+      // Por padrão, aqui removemos do master para não aparecer no próximo mês.
       state.fixosMaster = state.fixosMaster.filter(f => f.id !== item.masterId);
     }
     state.months[key].fixos = state.months[key].fixos.filter(i => i.id !== id);
