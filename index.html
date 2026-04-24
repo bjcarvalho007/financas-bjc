@@ -298,14 +298,11 @@ footer {
   </header>
 
   <div class="summary-grid">
+    <!-- PAINEL DE DÍVIDA BRUTA (TOTAL FIXOS + PARCELADOS) -->
     <div class="card debt-total-panel">
       <div>
-        <div class="card-label">Dívida Bruta Total (Fixos + Parcelados)</div>
+        <div class="card-label">Dívida Bruta Total (Fixos Acumulados + Parcelados)</div>
         <div class="card-value" id="res-debt-bruta">R$ 0,00</div>
-      </div>
-      <div style="text-align: right">
-        <div class="card-label" style="color: #94a3b8">Saldo Parcelamentos</div>
-        <div style="font-family: 'JetBrains Mono'; font-weight: 600;" id="res-parcelas-total">R$ 0,00</div>
       </div>
     </div>
 
@@ -476,37 +473,44 @@ function getPreviousDebt() {
 }
 
 function calculateBruteDebt() {
+  // Saldo de parcelamentos
   const parcelasTotal = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
+  // Saldo devedor de fixos pendentes em todos os meses registrados
   let fixosPendentesTotal = 0;
   Object.keys(state.months).forEach(key => {
     state.months[key].fixos.forEach(item => {
       fixosPendentesTotal += (item.amount - (item.paid_amount || 0));
     });
   });
-  return { total: parcelasTotal + fixosPendentesTotal, parcelas: parcelasTotal };
+  return parcelasTotal + fixosPendentesTotal;
 }
 
 function render() {
   const key = getDbKey();
   const monthData = state.months[key];
   const prevDebt = getPreviousDebt();
-  const brute = calculateBruteDebt();
+  const bruteTotal = calculateBruteDebt();
+  const parcelasPendente = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
   
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
   
-  document.getElementById('res-debt-bruta').textContent = fmt(brute.total);
-  document.getElementById('res-parcelas-total').textContent = fmt(brute.parcelas);
+  // Painel de Dívida Bruta
+  document.getElementById('res-debt-bruta').textContent = fmt(bruteTotal);
 
+  // Cards de resumo
   const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
   document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
 
   const totalMonth = allCurrent.reduce((s, i) => s + i.amount, 0) + prevDebt;
   const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
   
+  // "Restante Total Mês" agora inclui os parcelados de acordo com sua instrução
+  const restanteMesReal = (totalMonth - paidMonth) + parcelasPendente;
+  
   document.getElementById('res-total').textContent = fmt(totalMonth);
   document.getElementById('res-paid').textContent = fmt(paidMonth);
-  document.getElementById('res-pending').textContent = fmt(totalMonth - paidMonth);
+  document.getElementById('res-pending').textContent = fmt(restanteMesReal);
   document.getElementById('prev-debt-indicator').style.display = prevDebt > 0 ? 'block' : 'none';
 
   let list = [];
@@ -526,7 +530,7 @@ function render() {
     const cat = CATEGORIES[item.cat] || CATEGORIES.outros;
     const pAmount = item.paid_amount || 0;
     const remaining = item.amount - pAmount;
-    const isPaid = remaining <= 0;
+    const isPaid = remaining <= 0 && currentTab !== 'parcelas';
     
     return `
       <div class="expense-item">
@@ -540,10 +544,10 @@ function render() {
         <div class="item-right">
           <div class="item-price">
             <div style="font-size:0.95rem">${fmt(item.amount)}</div>
-            ${pAmount > 0 && !isPaid ? `<div style="font-size:0.7rem; color:var(--danger)">Falta ${fmt(remaining)}</div>` : ''}
+            ${pAmount > 0 && !isPaid ? `<div style="font-size:0.7rem; color:var(--danger)">Pago ${fmt(pAmount)}</div>` : ''}
           </div>
           <button class="btn-pay ${isPaid ? 'paid' : (pAmount > 0 ? 'partial' : '')}" onclick="openPayModal(${item.id})">
-            ${isPaid ? 'PAGO' : (pAmount > 0 ? 'PARCIAL' : 'PAGAR')}
+            ${currentTab === 'parcelas' ? 'AMORTIZAR' : (isPaid ? 'PAGO' : (pAmount > 0 ? 'PARCIAL' : 'PAGAR'))}
           </button>
           <button class="btn-action" title="Editar" onclick="editItem(${item.id})">✏️</button>
           <button class="btn-action btn-del" title="Excluir" onclick="deleteItem(${item.id})">🗑️</button>
@@ -572,7 +576,6 @@ function openAddModal() {
 function editItem(id) {
   let item;
   const key = getDbKey();
-  
   if (currentTab === 'parcelas') {
     item = state.parcelamentos.find(i => i.id === id);
   } else if (currentTab === 'fixos') {
@@ -589,7 +592,6 @@ function editItem(id) {
   document.getElementById('in-cat').value = item.cat;
   document.getElementById('in-due').value = item.due || '';
   document.getElementById('modal-title').textContent = "Editar Lançamento";
-  
   toggleModal('modal-add', true);
 }
 
@@ -614,18 +616,12 @@ function saveExpense() {
       const key = getDbKey();
       const listName = currentTab === 'fixos' ? 'fixos' : 'variaveis';
       const idx = state.months[key][listName].findIndex(i => i.id === id);
-      
       if (idx !== -1) {
         const item = state.months[key][listName][idx];
         state.months[key][listName][idx] = { ...item, name, amount, cat, due };
-        
-        // Se for fixo, atualizar apenas este mês para manter histórico
-        // Mas se quiser atualizar o "Modelo Master" para os próximos meses:
         if (item.masterId && currentTab === 'fixos') {
            const mIdx = state.fixosMaster.findIndex(f => f.id === item.masterId);
-           if (mIdx !== -1) {
-              state.fixosMaster[mIdx] = { ...state.fixosMaster[mIdx], name, amount, cat, due };
-           }
+           if (mIdx !== -1) state.fixosMaster[mIdx] = { ...state.fixosMaster[mIdx], name, amount, cat, due };
         }
       }
     }
@@ -642,7 +638,6 @@ function saveExpense() {
     }
     toast("Lançamento salvo!");
   }
-
   save();
   toggleModal('modal-add', false);
   clearForm();
@@ -655,11 +650,9 @@ function openPayModal(id) {
   } else {
     item = [...state.months[getDbKey()].fixos, ...state.months[getDbKey()].variaveis].find(i => i.id === id);
   }
-  
   if (!item) return;
   currentPayId = id;
   const rem = item.amount - (item.paid_amount || 0);
-
   document.getElementById('pay-details').innerHTML = `
     <strong>${item.name}</strong><br>
     Saldo Devedor: ${fmt(rem)}
@@ -672,42 +665,37 @@ function confirmPayment() {
   const val = parseFloat(document.getElementById('pay-value').value);
   if (isNaN(val) || val <= 0) return;
 
-  let item;
   if (currentTab === 'parcelas') {
-    item = state.parcelamentos.find(i => i.id === currentPayId);
+    const item = state.parcelamentos.find(i => i.id === currentPayId);
     if (item) {
       item.amount -= val;
       if (item.amount <= 0) {
          state.parcelamentos = state.parcelamentos.filter(i => i.id !== currentPayId);
          toast("Parcelamento quitado!");
       } else {
-         toast(`Pago ${fmt(val)}. Restante: ${fmt(item.amount)}`);
+         toast(`Amortizado ${fmt(val)}.`);
       }
     }
   } else {
     const all = [...state.months[getDbKey()].fixos, ...state.months[getDbKey()].variaveis];
-    item = all.find(i => i.id === currentPayId);
+    const item = all.find(i => i.id === currentPayId);
     if (item) {
       item.paid_amount = (item.paid_amount || 0) + val;
       toast(`Pagamento de ${fmt(val)} registrado.`);
     }
   }
-
   save();
   toggleModal('modal-pay', false);
 }
 
 function deleteItem(id) {
   if(!confirm("Deseja realmente excluir este item?")) return;
-  
   if (currentTab === 'parcelas') {
     state.parcelamentos = state.parcelamentos.filter(i => i.id !== id);
   } else {
     const key = getDbKey();
     const item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
     if (item && item.masterId && currentTab === 'fixos') {
-      // Se apagar o fixo, perguntar se quer apagar dos meses futuros também?
-      // Por padrão, aqui removemos do master para não aparecer no próximo mês.
       state.fixosMaster = state.fixosMaster.filter(f => f.id !== item.masterId);
     }
     state.months[key].fixos = state.months[key].fixos.filter(i => i.id !== id);
