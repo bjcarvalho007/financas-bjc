@@ -34,13 +34,16 @@ body {
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
-  padding-bottom: 100px; /* Espaço para o rodapé maior */
+  padding-bottom: 40px; 
 }
 
 .app-container {
   max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
+  min-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
 }
 
 header {
@@ -133,6 +136,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex-grow: 1; /* Faz a lista empurrar o footer para baixo */
 }
 
 .expense-item {
@@ -182,6 +186,22 @@ header {
 
 .btn-del { color: var(--danger); background: none; border: none; cursor: pointer; padding: 5px; }
 
+/* Estilização do Rodapé */
+footer {
+  margin-top: 60px;
+  padding: 20px 10px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+
+.footer-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+/* Modais */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -189,7 +209,7 @@ header {
   backdrop-filter: blur(4px);
   display: none;
   align-items: center;
-  justify-content: center;
+  justify- center;
   z-index: 1000;
   padding: 20px;
 }
@@ -203,6 +223,7 @@ header {
   border-radius: 20px;
   padding: 30px;
   position: relative;
+  margin: auto;
 }
 
 .modal-header { margin-bottom: 20px; font-weight: 700; font-size: 1.2rem; }
@@ -215,33 +236,6 @@ header {
   border-radius: 8px;
   border: 1px solid var(--border);
   font-family: inherit;
-}
-
-footer {
-  margin-top: 50px;
-  padding: 30px 20px;
-  text-align: center;
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
-}
-
-.footer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.footer-main {
-  font-weight: 700;
-  color: var(--primary);
-  font-size: 0.9rem;
-}
-
-.footer-sub {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 #toast {
@@ -303,13 +297,13 @@ footer {
   <div id="expense-list" class="expense-list"></div>
 
   <footer>
-    <div class="footer-content">
-      <div class="footer-main"> © Todos os direitos reservados • Benedito Junior • 2026</div>
+    <div class="footer-text">
+      © Todos os direitos reservados • Benedito Junior • 2026
     </div>
   </footer>
 </div>
 
-<!-- Modal Add -->
+<!-- Modais de Interface -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-header">Novo Lançamento</div>
@@ -350,7 +344,6 @@ footer {
   </div>
 </div>
 
-<!-- Modal Pay -->
 <div class="modal-overlay" id="modal-pay">
   <div class="modal">
     <div class="modal-header">Registrar Pagamento</div>
