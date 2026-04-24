@@ -22,6 +22,7 @@
   --text-muted: #64748b;
   --danger: #ef4444;
   --success: #10b981;
+  --warning: #f59e0b;
   --border: #e2e8f0;
   --radius: 12px;
   --shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
@@ -38,7 +39,7 @@ body {
 }
 
 .app-container {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
   min-height: calc(100vh - 40px);
@@ -65,7 +66,7 @@ header {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
   margin-bottom: 30px;
 }
@@ -76,10 +77,23 @@ header {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
+  transition: transform 0.2s;
 }
 
-.card-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.card-value { font-size: 1.4rem; font-weight: 700; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+.card-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.card-value { font-size: 1.3rem; font-weight: 700; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+
+.debt-total-panel {
+  background: #1e293b;
+  color: white;
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 5px solid var(--danger);
+}
+.debt-total-panel .card-label { color: #94a3b8; }
+.debt-total-panel .card-value { color: #fca5a5; font-size: 1.8rem; }
 
 .nav-bar {
   display: flex;
@@ -106,7 +120,12 @@ header {
   height: 32px;
   border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
 }
+.month-nav button:hover { background: var(--border); }
 
 .tabs {
   display: flex;
@@ -147,6 +166,12 @@ header {
   align-items: center;
   justify-content: space-between;
   border: 1px solid var(--border);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .item-left { display: flex; align-items: center; gap: 15px; }
@@ -252,6 +277,13 @@ footer {
   z-index: 2000;
 }
 #toast.show { transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 600px) {
+  .summary-grid { grid-template-columns: 1fr 1fr; }
+  .debt-total-panel { grid-column: 1 / span 2; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .item-right { flex-direction: column; align-items: flex-end; }
+  .item-right .btn-action { display: none; } /* Simplificar mobile */
+}
 </style>
 </head>
 <body>
@@ -265,13 +297,25 @@ footer {
   </header>
 
   <div class="summary-grid">
+    <!-- NOVO PAINEL DE DÍVIDA BRUTA -->
+    <div class="card debt-total-panel">
+      <div>
+        <div class="card-label">Dívida Bruta Total (Fixos + Parcelados)</div>
+        <div class="card-value" id="res-debt-bruta">R$ 0,00</div>
+      </div>
+      <div style="text-align: right">
+        <div class="card-label" style="color: #94a3b8">Saldo Parcelamentos</div>
+        <div style="font-family: 'JetBrains Mono'; font-weight: 600;" id="res-parcelas-total">R$ 0,00</div>
+      </div>
+    </div>
+
     <div class="card" style="border-top: 5px solid var(--primary); background: #f1f5f9;">
-      <div class="card-label">Falta Pagar (FIXOS)</div>
+      <div class="card-label">Falta Pagar (Fixos Mês)</div>
       <div class="card-value" id="res-pending-fixos" style="color: var(--primary);">R$ 0,00</div>
     </div>
     
     <div class="card">
-      <div class="card-label">Previsto Mês</div>
+      <div class="card-label">Previsto no Mês</div>
       <div class="card-value" id="res-total">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--success);">
@@ -279,7 +323,7 @@ footer {
       <div class="card-value" id="res-paid" style="color: var(--success);">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--danger);">
-      <div class="card-label">Restante Total</div>
+      <div class="card-label">Restante Total Mês</div>
       <div class="card-value" id="res-pending" style="color: var(--danger);">R$ 0,00</div>
     </div>
   </div>
@@ -392,6 +436,8 @@ let state = {
 };
 let currentPayId = null;
 
+const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
 function getDbKey(m = curMonth, y = curYear) { return `${y}-${m}`; }
 
 function load() {
@@ -429,16 +475,36 @@ function getPreviousDebt() {
   return Math.max(0, total - paid);
 }
 
-const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+// CÁLCULO DA DÍVIDA BRUTA TOTAL
+function calculateBruteDebt() {
+  // 1. Saldo devedor de parcelamentos
+  const parcelasTotal = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
+  
+  // 2. Saldo devedor de fixos pendentes em todos os meses já registrados
+  let fixosPendentesTotal = 0;
+  Object.keys(state.months).forEach(key => {
+    state.months[key].fixos.forEach(item => {
+      fixosPendentesTotal += (item.amount - (item.paid_amount || 0));
+    });
+  });
+
+  return { total: parcelasTotal + fixosPendentesTotal, parcelas: parcelasTotal };
+}
 
 function render() {
   const key = getDbKey();
   const monthData = state.months[key];
   const prevDebt = getPreviousDebt();
+  const brute = calculateBruteDebt();
   
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
   
+  // Atualizar Painel de Dívida Bruta
+  document.getElementById('res-debt-bruta').textContent = fmt(brute.total);
+  document.getElementById('res-parcelas-total').textContent = fmt(brute.parcelas);
+
+  // Cards Mensais
   const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
   document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
 
@@ -459,7 +525,7 @@ function render() {
 
   const container = document.getElementById('expense-list');
   if (list.length === 0) {
-    container.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8">Nada por aqui ainda.</div>`;
+    container.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8">Nada por aqui ainda em ${currentTab}.</div>`;
     return;
   }
 
@@ -494,7 +560,6 @@ function render() {
   }).join('');
 }
 
-// Funções de Modal e Limpeza
 function toggleModal(id, open) { document.getElementById(id).classList.toggle('open', open); }
 
 function clearForm() { 
@@ -510,7 +575,6 @@ function openAddModal() {
   toggleModal('modal-add', true);
 }
 
-// Função para Editar Item
 function editItem(id) {
   let item;
   if (currentTab === 'parcelas') {
@@ -532,7 +596,6 @@ function editItem(id) {
   toggleModal('modal-add', true);
 }
 
-// Função Salvar (Criação ou Edição)
 function saveExpense() {
   const id = document.getElementById('edit-id').value;
   const name = document.getElementById('in-name').value;
@@ -543,7 +606,6 @@ function saveExpense() {
   if (!name || isNaN(amount)) return;
 
   if (id) {
-    // Modo Edição
     if (currentTab === 'parcelas') {
       const idx = state.parcelamentos.findIndex(i => i.id == id);
       if (idx !== -1) state.parcelamentos[idx] = { ...state.parcelamentos[idx], name, amount, cat, due };
@@ -555,8 +617,6 @@ function saveExpense() {
       if (idx !== -1) {
         const item = state.months[key][listName][idx];
         state.months[key][listName][idx] = { ...item, name, amount, cat, due };
-        
-        // Se for fixo e tiver masterId, atualizar também no master para os próximos meses
         if (item.masterId) {
           const mIdx = state.fixosMaster.findIndex(f => f.id === item.masterId);
           if (mIdx !== -1) state.fixosMaster[mIdx] = { ...state.fixosMaster[mIdx], name, amount, cat, due };
@@ -565,7 +625,6 @@ function saveExpense() {
     }
     toast("Alteração salva!");
   } else {
-    // Modo Novo
     const newItem = { id: Date.now(), name, amount, cat, due, paid_amount: 0 };
     if (currentTab === 'fixos') {
       state.fixosMaster.push({ ...newItem });
@@ -616,7 +675,7 @@ function confirmPayment() {
          state.parcelamentos = state.parcelamentos.filter(i => i.id !== currentPayId);
          toast("Parcelamento quitado!");
       } else {
-         toast(`Pago ${fmt(val)}. Saldo atual: ${fmt(item.amount)}`);
+         toast(`Pago ${fmt(val)}. Restante: ${fmt(item.amount)}`);
       }
     }
   } else {
@@ -633,6 +692,8 @@ function confirmPayment() {
 }
 
 function deleteItem(id) {
+  if(!confirm("Deseja realmente excluir este item?")) return;
+  
   if (currentTab === 'parcelas') {
     state.parcelamentos = state.parcelamentos.filter(i => i.id !== id);
   } else {
