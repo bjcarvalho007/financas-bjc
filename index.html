@@ -158,8 +158,8 @@ header {
 .item-details .name { font-weight: 700; font-size: 1rem; }
 .item-details .meta { font-size: 0.8rem; color: var(--text-muted); }
 
-.item-right { text-align: right; display: flex; align-items: center; gap: 15px; }
-.item-price { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+.item-right { text-align: right; display: flex; align-items: center; gap: 8px; }
+.item-price { font-family: 'JetBrains Mono', monospace; font-weight: 700; margin-right: 10px; }
 
 .btn-add {
   background: var(--accent);
@@ -184,7 +184,9 @@ header {
 .btn-pay.paid { background: var(--success); color: white; border-color: var(--success); }
 .btn-pay.partial { background: #fef3c7; border-color: #f59e0b; color: #b45309; }
 
-.btn-del { color: var(--danger); background: none; border: none; cursor: pointer; padding: 5px; }
+.btn-action { background: none; border: none; cursor: pointer; padding: 5px; font-size: 1.1rem; filter: grayscale(1); transition: 0.2s; }
+.btn-action:hover { filter: grayscale(0); transform: scale(1.1); }
+.btn-del { color: var(--danger); }
 
 footer {
   margin-top: 60px;
@@ -259,11 +261,10 @@ footer {
 <div class="app-container">
   <header>
     <div class="brand-title">💎 Finanças Mensais</div>
-    <button class="btn-add" onclick="toggleModal('modal-add', true)">+ Novo Gasto</button>
+    <button class="btn-add" onclick="openAddModal()">+ Novo Gasto</button>
   </header>
 
   <div class="summary-grid">
-    <!-- NOVO: Monitor de Fixos Pendentes -->
     <div class="card" style="border-top: 5px solid var(--primary); background: #f1f5f9;">
       <div class="card-label">Falta Pagar (FIXOS)</div>
       <div class="card-value" id="res-pending-fixos" style="color: var(--primary);">R$ 0,00</div>
@@ -307,9 +308,11 @@ footer {
   </footer>
 </div>
 
+<!-- Modal Unificado de Adição e Edição -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
-    <div class="modal-header">Novo Lançamento</div>
+    <div class="modal-header" id="modal-title">Novo Lançamento</div>
+    <input type="hidden" id="edit-id">
     <div class="input-group">
       <label>Título do Gasto</label>
       <input type="text" id="in-name" placeholder="Ex: Internet, Aluguel...">
@@ -331,7 +334,7 @@ footer {
           <option value="internet">🌐 Internet/TV</option>
           <option value="assinaturas">💳 Assinaturas</option>
           <option value="lazer">🎮 Lazer</option>
-          <option value="Cartão de Credito">📈 Cartão de Credito</option>
+          <option value="cartao">💳 Cartão de Crédito</option>
           <option value="outros">📦 Outros</option>
         </select>
       </div>
@@ -341,7 +344,7 @@ footer {
       <input type="text" id="in-due" placeholder="Ex: Dia 10">
     </div>
     <div style="display: flex; gap: 10px; margin-top: 20px;">
-      <button class="btn-add" style="flex: 1;" onclick="addExpense()">Salvar</button>
+      <button class="btn-add" style="flex: 1;" onclick="saveExpense()">Salvar</button>
       <button class="btn-pay" style="padding: 12px; border-radius: 10px;" onclick="toggleModal('modal-add', false)">Cancelar</button>
     </div>
   </div>
@@ -374,7 +377,7 @@ const CATEGORIES = {
   internet: { icon: '🌐', bg: '#f0f9ff', color: '#0369a1' },
   assinaturas: { icon: '💳', bg: '#f8fafc', color: '#475569' },
   lazer: { icon: '🎮', bg: '#fdf4ff', color: '#d946ef' },
-  investimento: { icon: '📈', bg: '#ecfdf5', color: '#059669' },
+  cartao: { icon: '💳', bg: '#ecfdf5', color: '#059669' },
   outros: { icon: '📦', bg: '#f8fafc', color: '#64748b' }
 };
 
@@ -436,7 +439,6 @@ function render() {
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
   
-  // Cálculo do que falta pagar apenas dos fixos
   const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
   document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
 
@@ -484,11 +486,101 @@ function render() {
           <button class="btn-pay ${isPaid ? 'paid' : (pAmount > 0 ? 'partial' : '')}" onclick="openPayModal(${item.id})">
             ${isPaid ? 'PAGO' : (pAmount > 0 ? 'PARCIAL' : 'PAGAR')}
           </button>
-          <button class="btn-del" onclick="deleteItem(${item.id})">🗑️</button>
+          <button class="btn-action" onclick="editItem(${item.id})">✏️</button>
+          <button class="btn-action btn-del" onclick="deleteItem(${item.id})">🗑️</button>
         </div>
       </div>
     `;
   }).join('');
+}
+
+// Funções de Modal e Limpeza
+function toggleModal(id, open) { document.getElementById(id).classList.toggle('open', open); }
+
+function clearForm() { 
+  document.getElementById('edit-id').value = '';
+  document.getElementById('in-name').value = ''; 
+  document.getElementById('in-amount').value = '';
+  document.getElementById('in-due').value = '';
+  document.getElementById('modal-title').textContent = "Novo Lançamento";
+}
+
+function openAddModal() {
+  clearForm();
+  toggleModal('modal-add', true);
+}
+
+// Função para Editar Item
+function editItem(id) {
+  let item;
+  if (currentTab === 'parcelas') {
+    item = state.parcelamentos.find(i => i.id === id);
+  } else {
+    const key = getDbKey();
+    item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
+  }
+
+  if (!item) return;
+
+  document.getElementById('edit-id').value = id;
+  document.getElementById('in-name').value = item.name;
+  document.getElementById('in-amount').value = item.amount;
+  document.getElementById('in-cat').value = item.cat;
+  document.getElementById('in-due').value = item.due || '';
+  document.getElementById('modal-title').textContent = "Editar Lançamento";
+  
+  toggleModal('modal-add', true);
+}
+
+// Função Salvar (Criação ou Edição)
+function saveExpense() {
+  const id = document.getElementById('edit-id').value;
+  const name = document.getElementById('in-name').value;
+  const amount = parseFloat(document.getElementById('in-amount').value);
+  const cat = document.getElementById('in-cat').value;
+  const due = document.getElementById('in-due').value;
+
+  if (!name || isNaN(amount)) return;
+
+  if (id) {
+    // Modo Edição
+    if (currentTab === 'parcelas') {
+      const idx = state.parcelamentos.findIndex(i => i.id == id);
+      if (idx !== -1) state.parcelamentos[idx] = { ...state.parcelamentos[idx], name, amount, cat, due };
+    } else {
+      const key = getDbKey();
+      const listName = currentTab === 'fixos' ? 'fixos' : 'variaveis';
+      const idx = state.months[key][listName].findIndex(i => i.id == id);
+      
+      if (idx !== -1) {
+        const item = state.months[key][listName][idx];
+        state.months[key][listName][idx] = { ...item, name, amount, cat, due };
+        
+        // Se for fixo e tiver masterId, atualizar também no master para os próximos meses
+        if (item.masterId) {
+          const mIdx = state.fixosMaster.findIndex(f => f.id === item.masterId);
+          if (mIdx !== -1) state.fixosMaster[mIdx] = { ...state.fixosMaster[mIdx], name, amount, cat, due };
+        }
+      }
+    }
+    toast("Alteração salva!");
+  } else {
+    // Modo Novo
+    const newItem = { id: Date.now(), name, amount, cat, due, paid_amount: 0 };
+    if (currentTab === 'fixos') {
+      state.fixosMaster.push({ ...newItem });
+      state.months[getDbKey()].fixos.push({ ...newItem, masterId: newItem.id });
+    } else if (currentTab === 'parcelas') {
+      state.parcelamentos.push(newItem);
+    } else {
+      state.months[getDbKey()].variaveis.push(newItem);
+    }
+    toast("Lançamento salvo!");
+  }
+
+  save();
+  toggleModal('modal-add', false);
+  clearForm();
 }
 
 function openPayModal(id) {
@@ -540,31 +632,6 @@ function confirmPayment() {
   toggleModal('modal-pay', false);
 }
 
-function addExpense() {
-  const name = document.getElementById('in-name').value;
-  const amount = parseFloat(document.getElementById('in-amount').value);
-  const cat = document.getElementById('in-cat').value;
-  const due = document.getElementById('in-due').value;
-
-  if (!name || isNaN(amount)) return;
-
-  const newItem = { id: Date.now(), name, amount, cat, due, paid_amount: 0 };
-
-  if (currentTab === 'fixos') {
-    state.fixosMaster.push({ ...newItem });
-    state.months[getDbKey()].fixos.push({ ...newItem, masterId: newItem.id });
-  } else if (currentTab === 'parcelas') {
-    state.parcelamentos.push(newItem);
-  } else {
-    state.months[getDbKey()].variaveis.push(newItem);
-  }
-
-  save();
-  toggleModal('modal-add', false);
-  clearForm();
-  toast("Lançamento salvo!");
-}
-
 function deleteItem(id) {
   if (currentTab === 'parcelas') {
     state.parcelamentos = state.parcelamentos.filter(i => i.id !== id);
@@ -595,11 +662,6 @@ function changeMonth(step) {
   render();
 }
 
-function toggleModal(id, open) { document.getElementById(id).classList.toggle('open', open); }
-function clearForm() { 
-  document.getElementById('in-name').value = ''; 
-  document.getElementById('in-amount').value = '';
-}
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
