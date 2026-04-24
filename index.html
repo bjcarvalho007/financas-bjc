@@ -280,6 +280,17 @@ footer {
 }
 #toast.show { transform: translateX(-50%) translateY(0); }
 
+/* Estilo para Botão de Perigo no Modal */
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
 @media (max-width: 600px) {
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .debt-total-panel { grid-column: 1 / span 2; flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -349,6 +360,7 @@ footer {
   </footer>
 </div>
 
+<!-- Modal Adicionar/Editar -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-header" id="modal-title">Novo Lançamento</div>
@@ -390,6 +402,7 @@ footer {
   </div>
 </div>
 
+<!-- Modal Pagamento -->
 <div class="modal-overlay" id="modal-pay">
   <div class="modal">
     <div class="modal-header">Registrar Pagamento</div>
@@ -401,6 +414,19 @@ footer {
     <div style="display: flex; gap: 10px; margin-top: 20px;">
       <button class="btn-add" style="flex: 1;" onclick="confirmPayment()">Confirmar</button>
       <button class="btn-pay" style="padding: 12px; border-radius: 10px;" onclick="toggleModal('modal-pay', false)">Voltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOVO Modal de Confirmação para Excluir -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width: 350px; text-align: center;">
+    <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+    <div class="modal-header" style="margin-bottom: 10px;">Deseja realmente apagar?</div>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 25px;">Esta ação não pode ser desfeita.</p>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-danger" style="flex: 1;" id="btn-confirm-delete">Sim, Apagar</button>
+      <button class="btn-pay" style="flex: 1; padding: 12px; border-radius: 10px;" onclick="toggleModal('modal-confirm', false)">Cancelar</button>
     </div>
   </div>
 </div>
@@ -431,6 +457,7 @@ let state = {
   parcelamentos: [] 
 };
 let currentPayId = null;
+let currentDeleteId = null; // Para rastrear o que apagar no modal customizado
 
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -530,7 +557,7 @@ function render() {
             ${currentTab === 'parcelas' ? 'AMORTIZAR' : (isPaid ? 'PAGO' : (pAmount > 0 ? 'PARCIAL' : 'PAGAR'))}
           </button>
           <button class="btn-action" title="Editar" onclick="editItem(${item.id})">✏️</button>
-          <button class="btn-action btn-del" title="Excluir" onclick="deleteItem(${item.id})">🗑️</button>
+          <button class="btn-action btn-del" title="Excluir" onclick="openConfirmModal(${item.id})">🗑️</button>
         </div>
       </div>
     `;
@@ -668,21 +695,35 @@ function confirmPayment() {
   toggleModal('modal-pay', false);
 }
 
-function deleteItem(id) {
-  if(!confirm("Deseja realmente excluir este item?")) return;
-  if (currentTab === 'parcelas') {
-    state.parcelamentos = state.parcelamentos.filter(i => i.id !== id);
-  } else {
-    const key = getDbKey();
-    const item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
-    if (item && item.masterId && currentTab === 'fixos') {
-      state.fixosMaster = state.fixosMaster.filter(f => f.id !== item.masterId);
+// LOGICA DE EXCLUSÃO CUSTOMIZADA
+function openConfirmModal(id) {
+    currentDeleteId = id;
+    toggleModal('modal-confirm', true);
+}
+
+document.getElementById('btn-confirm-delete').onclick = () => {
+    if (currentDeleteId) {
+        const id = currentDeleteId;
+        if (currentTab === 'parcelas') {
+          state.parcelamentos = state.parcelamentos.filter(i => i.id !== id);
+        } else {
+          const key = getDbKey();
+          const item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
+          if (item && item.masterId && currentTab === 'fixos') {
+            state.fixosMaster = state.fixosMaster.filter(f => f.id !== item.masterId);
+          }
+          state.months[key].fixos = state.months[key].fixos.filter(i => i.id !== id);
+          state.months[key].variaveis = state.months[key].variaveis.filter(i => i.id !== id);
+        }
+        save();
+        toast("Removido.");
+        toggleModal('modal-confirm', false);
+        currentDeleteId = null;
     }
-    state.months[key].fixos = state.months[key].fixos.filter(i => i.id !== id);
-    state.months[key].variaveis = state.months[key].variaveis.filter(i => i.id !== id);
-  }
-  save();
-  toast("Removido.");
+};
+
+function deleteItem(id) {
+  // Substituído por openConfirmModal
 }
 
 function switchTab(t) {
