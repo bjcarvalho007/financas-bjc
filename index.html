@@ -5,14 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finanças Mensais</title>
 
-<!-- Ícone da Aba (Favicon) usando Emoji -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
-
-<!-- Configurações para aparecer como App no iPhone e Android -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Finanças BJC">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230f172a%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2260%22>💎</text></svg>">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -20,7 +16,6 @@
 :root {
   --primary: #0f172a;
   --accent: #10b981;
-  --accent-hover: #059669;
   --bg: #f8fafc;
   --surface: #ffffff;
   --text: #1e293b;
@@ -39,7 +34,7 @@ body {
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
-  padding-bottom: 80px;
+  padding-bottom: 100px; /* Espaço para o rodapé maior */
 }
 
 .app-container {
@@ -67,21 +62,21 @@ header {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
   margin-bottom: 30px;
 }
 
 .card {
   background: var(--surface);
-  padding: 24px;
+  padding: 20px;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
 }
 
-.card-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.card-value { font-size: 1.75rem; font-weight: 700; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+.card-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.card-value { font-size: 1.5rem; font-weight: 700; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
 
 .nav-bar {
   display: flex;
@@ -108,25 +103,25 @@ header {
   height: 32px;
   border-radius: 50%;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .tabs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 5px;
 }
 
 .tab-btn {
   background: transparent;
   border: none;
-  padding: 10px 20px;
+  padding: 10px 18px;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 8px;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
@@ -223,22 +218,30 @@ header {
 }
 
 footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  margin-top: 50px;
+  padding: 30px 20px;
   text-align: center;
-  padding: 20px;
-  background: var(--bg);
-  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
   color: var(--text-muted);
-  font-weight: 600;
 }
 
-@media (max-width: 600px) {
-  header { flex-direction: column; gap: 15px; text-align: center; }
-  .expense-item { flex-direction: column; align-items: flex-start; gap: 15px; }
-  .item-right { width: 100%; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 10px; }
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.footer-main {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+
+.footer-sub {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 #toast {
@@ -269,7 +272,7 @@ footer {
 
   <div class="summary-grid">
     <div class="card">
-      <div class="card-label">Previsto Total</div>
+      <div class="card-label">Previsto Mês</div>
       <div class="card-value" id="res-total">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--success);">
@@ -277,36 +280,34 @@ footer {
       <div class="card-value" id="res-paid" style="color: var(--success);">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--danger);">
-      <div class="card-label">Falta Pagar</div>
+      <div class="card-label">Restante</div>
       <div class="card-value" id="res-pending" style="color: var(--danger);">R$ 0,00</div>
-    </div>
-    <!-- Card de Pendência Acumulada -->
-    <div class="card" id="card-debt" style="border-left: 5px solid var(--warning); display: none; background: #fffbeb;">
-      <div class="card-label" style="color: #92400e;">Pendência Anterior</div>
-      <div class="card-value" id="res-debt" style="color: #92400e;">R$ 0,00</div>
     </div>
   </div>
 
   <div class="nav-bar">
     <div class="month-nav">
       <button onclick="changeMonth(-1)">‹</button>
-      <span id="display-date">Abril 2024</span>
+      <span id="display-date">...</span>
       <button onclick="changeMonth(1)">›</button>
     </div>
-    <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent);">Balanço do Mês</div>
+    <div id="prev-debt-indicator" style="font-size: 0.75rem; font-weight: 700; color: var(--danger); display: none;">+ Pendência Anterior</div>
   </div>
 
   <div class="tabs">
     <button class="tab-btn active" id="tab-fixos" onclick="switchTab('fixos')">Fixos</button>
     <button class="tab-btn" id="tab-variaveis" onclick="switchTab('variaveis')">Variáveis</button>
+    <button class="tab-btn" id="tab-parcelas" onclick="switchTab('parcelas')">Parcelamentos</button>
   </div>
 
   <div id="expense-list" class="expense-list"></div>
-</div>
 
-<footer>
-  Todos os direitos reservados - Benedito junior © <span id="footer-year"></span>
-</footer>
+  <footer>
+    <div class="footer-content">
+      <div class="footer-main"> © Todos os direitos reservados • Benedito Junior<span id="footer-year">2026</span></div>
+    </div>
+  </footer>
+</div>
 
 <!-- Modal Add -->
 <div class="modal-overlay" id="modal-add">
@@ -325,10 +326,15 @@ footer {
         <label>Categoria</label>
         <select id="in-cat">
           <option value="moradia">🏠 Moradia</option>
+          <option value="mercado">🛒 Mercado</option>
           <option value="alimentacao">🍕 Alimentação</option>
           <option value="transporte">🚗 Transporte</option>
           <option value="saude">🏥 Saúde</option>
+          <option value="educacao">📚 Educação</option>
+          <option value="internet">🌐 Internet/TV</option>
+          <option value="assinaturas">💳 Assinaturas</option>
           <option value="lazer">🎮 Lazer</option>
+          <option value="investimento">📈 Investimento</option>
           <option value="outros">📦 Outros</option>
         </select>
       </div>
@@ -348,11 +354,9 @@ footer {
 <div class="modal-overlay" id="modal-pay">
   <div class="modal">
     <div class="modal-header">Registrar Pagamento</div>
-    <div id="pay-details" style="margin-bottom: 20px; padding: 15px; background: var(--bg); border-radius: 10px; font-size: 0.9rem;">
-      <!-- Preenchido via JS -->
-    </div>
+    <div id="pay-details" style="margin-bottom: 20px; padding: 15px; background: var(--bg); border-radius: 10px; font-size: 0.9rem;"></div>
     <div class="input-group">
-      <label>Quanto deseja pagar agora? (R$)</label>
+      <label>Valor do Pagamento (R$)</label>
       <input type="number" id="pay-value" step="0.01" placeholder="0.00">
     </div>
     <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -366,110 +370,102 @@ footer {
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const CATEGORIES = {
   moradia: { icon: '🏠', bg: '#eff6ff', color: '#3b82f6' },
+  mercado: { icon: '🛒', bg: '#f0fdf4', color: '#16a34a' },
   alimentacao: { icon: '🍕', bg: '#fff7ed', color: '#f97316' },
   transporte: { icon: '🚗', bg: '#fef2f2', color: '#ef4444' },
-  saude: { icon: '🏥', bg: '#f0fdf4', color: '#22c55e' },
+  saude: { icon: '🏥', bg: '#fff1f2', color: '#e11d48' },
+  educacao: { icon: '📚', bg: '#faf5ff', color: '#9333ea' },
+  internet: { icon: '🌐', bg: '#f0f9ff', color: '#0369a1' },
+  assinaturas: { icon: '💳', bg: '#f8fafc', color: '#475569' },
   lazer: { icon: '🎮', bg: '#fdf4ff', color: '#d946ef' },
+  investimento: { icon: '📈', bg: '#ecfdf5', color: '#059669' },
   outros: { icon: '📦', bg: '#f8fafc', color: '#64748b' }
 };
 
-let date = new Date();
-let curMonth = date.getMonth();
-let curYear = date.getFullYear();
+let curDate = new Date();
+let curMonth = curDate.getMonth();
+let curYear = curDate.getFullYear();
 let currentTab = 'fixos';
 let state = {
-  months: {}, // Armazena dados específicos do mês { '2024-3': { fixos: [], variaveis: [] } }
-  fixosMaster: [] // Armazena os modelos de gastos fixos que se repetem
+  months: {},
+  fixosMaster: [], 
+  parcelamentos: [] 
 };
 let currentPayId = null;
 
 function getDbKey(m = curMonth, y = curYear) { return `${y}-${m}`; }
 
 function load() {
-  const saved = localStorage.getItem('bjc_financas_db_v2');
-  if (saved) {
-    state = JSON.parse(saved);
-  } else {
-    state = { months: {}, fixosMaster: [] };
-  }
-  syncMonth();
-}
-
-// Garante que o mês atual tenha os fixos do Master
-function syncMonth() {
-  const key = getDbKey();
-  if (!state.months[key]) {
-    state.months[key] = { fixos: [], variaveis: [] };
-    // Clonar fixos do master para este mês novo
-    state.months[key].fixos = state.fixosMaster.map(f => ({ ...f, id: Date.now() + Math.random(), paid_amount: 0, paid: false }));
-  }
+  const saved = localStorage.getItem('bjc_financas_v3');
+  if (saved) state = JSON.parse(saved);
+  syncData();
 }
 
 function save() {
-  localStorage.setItem('bjc_financas_db_v2', JSON.stringify(state));
+  localStorage.setItem('bjc_financas_v3', JSON.stringify(state));
   render();
 }
 
-const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+function syncData() {
+  const key = getDbKey();
+  if (!state.months[key]) state.months[key] = { fixos: [], variaveis: [] };
+  
+  state.fixosMaster.forEach(master => {
+    const exists = state.months[key].fixos.find(f => f.masterId === master.id);
+    if (!exists) {
+      state.months[key].fixos.push({ ...master, id: Date.now() + Math.random(), masterId: master.id, paid_amount: 0 });
+    }
+  });
+}
 
-// Calcula dívida pendente do mês anterior
 function getPreviousDebt() {
-  let prevM = curMonth - 1;
-  let prevY = curYear;
-  if (prevM < 0) { prevM = 11; prevY--; }
-  
-  const key = getDbKey(prevM, prevY);
+  let pm = curMonth - 1, py = curYear;
+  if (pm < 0) { pm = 11; py--; }
+  const key = getDbKey(pm, py);
   if (!state.months[key]) return 0;
-  
-  const all = [...state.months[key].fixos, ...state.months[key].variaveis];
+  const mData = state.months[key];
+  const all = [...mData.fixos, ...mData.variaveis];
   const total = all.reduce((s, i) => s + i.amount, 0);
   const paid = all.reduce((s, i) => s + (i.paid_amount || 0), 0);
   return Math.max(0, total - paid);
 }
 
+const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
 function render() {
-  const data = state.months[getDbKey()];
-  const list = data[currentTab];
-  const container = document.getElementById('expense-list');
-
-  document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
-  document.getElementById('footer-year').textContent = new Date().getFullYear();
-
+  const key = getDbKey();
+  const monthData = state.months[key];
   const prevDebt = getPreviousDebt();
-  const all = [...data.fixos, ...data.variaveis];
-  const totalThisMonth = all.reduce((s, i) => s + i.amount, 0);
-  const totalPaid = all.reduce((s, i) => s + (i.paid_amount || 0), 0);
   
-  // Atualiza Cards
-  document.getElementById('res-total').textContent = fmt(totalThisMonth + prevDebt);
-  document.getElementById('res-paid').textContent = fmt(totalPaid);
-  document.getElementById('res-pending').textContent = fmt((totalThisMonth + prevDebt) - totalPaid);
+  document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
+  const allCurrent = [...monthData.fixos, ...monthData.variaveis];
+  const totalMonth = allCurrent.reduce((s, i) => s + i.amount, 0) + prevDebt;
+  const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
+  
+  document.getElementById('res-total').textContent = fmt(totalMonth);
+  document.getElementById('res-paid').textContent = fmt(paidMonth);
+  document.getElementById('res-pending').textContent = fmt(totalMonth - paidMonth);
+  document.getElementById('prev-debt-indicator').style.display = prevDebt > 0 ? 'block' : 'none';
 
-  // Card de Dívida Acumulada
-  const cardDebt = document.getElementById('card-debt');
-  if (prevDebt > 0) {
-    cardDebt.style.display = 'block';
-    document.getElementById('res-debt').textContent = fmt(prevDebt);
+  let list = [];
+  if (currentTab === 'parcelas') {
+    list = state.parcelamentos;
   } else {
-    cardDebt.style.display = 'none';
+    list = monthData[currentTab];
   }
 
+  const container = document.getElementById('expense-list');
   if (list.length === 0) {
-    container.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8">Nenhum gasto neste mês.</div>`;
+    container.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8">Nada por aqui ainda.</div>`;
     return;
   }
 
   container.innerHTML = list.map(item => {
     const cat = CATEGORIES[item.cat] || CATEGORIES.outros;
     const pAmount = item.paid_amount || 0;
-    const isTotal = pAmount >= item.amount;
-    const isPartial = pAmount > 0 && pAmount < item.amount;
+    const remaining = item.amount - pAmount;
+    const isPaid = remaining <= 0;
     
-    let statusClass = '';
-    let statusText = 'PAGAR';
-    if(isTotal) { statusClass = 'paid'; statusText = 'PAGO'; }
-    else if(isPartial) { statusClass = 'partial'; statusText = 'PARCIAL'; }
-
     return `
       <div class="expense-item">
         <div class="item-left">
@@ -482,10 +478,10 @@ function render() {
         <div class="item-right">
           <div class="item-price">
             <div style="font-size:0.95rem">${fmt(item.amount)}</div>
-            ${isPartial ? `<div style="font-size:0.7rem; color:var(--text-muted)">Falta ${fmt(item.amount - pAmount)}</div>` : ''}
+            ${pAmount > 0 && !isPaid ? `<div style="font-size:0.7rem; color:var(--danger)">Falta ${fmt(remaining)}</div>` : ''}
           </div>
-          <button class="btn-pay ${statusClass}" onclick="openPayModal(${item.id})">
-            ${statusText}
+          <button class="btn-pay ${isPaid ? 'paid' : (pAmount > 0 ? 'partial' : '')}" onclick="openPayModal(${item.id})">
+            ${isPaid ? 'PAGO' : (pAmount > 0 ? 'PARCIAL' : 'PAGAR')}
           </button>
           <button class="btn-del" onclick="deleteItem(${item.id})">🗑️</button>
         </div>
@@ -495,45 +491,52 @@ function render() {
 }
 
 function openPayModal(id) {
-  const db = state.months[getDbKey()];
-  const item = [...db.fixos, ...db.variaveis].find(i => i.id === id);
+  let item;
+  if (currentTab === 'parcelas') {
+    item = state.parcelamentos.find(i => i.id === id);
+  } else {
+    item = [...state.months[getDbKey()].fixos, ...state.months[getDbKey()].variaveis].find(i => i.id === id);
+  }
+  
   if (!item) return;
-
   currentPayId = id;
-  const pAmount = item.paid_amount || 0;
-  const remaining = item.amount - pAmount;
+  const rem = item.amount - (item.paid_amount || 0);
 
   document.getElementById('pay-details').innerHTML = `
     <strong>${item.name}</strong><br>
-    Valor Total: ${fmt(item.amount)}<br>
-    Já pago: ${fmt(pAmount)}<br>
-    <span style="color:var(--danger)">Restante: ${fmt(remaining)}</span>
+    Saldo Devedor: ${fmt(rem)}
   `;
-  document.getElementById('pay-value').value = remaining.toFixed(2);
+  document.getElementById('pay-value').value = rem.toFixed(2);
   toggleModal('modal-pay', true);
 }
 
 function confirmPayment() {
   const val = parseFloat(document.getElementById('pay-value').value);
-  if(isNaN(val) || val <= 0) {
-    toast("Digite um valor válido!");
-    return;
+  if (isNaN(val) || val <= 0) return;
+
+  let item;
+  if (currentTab === 'parcelas') {
+    item = state.parcelamentos.find(i => i.id === currentPayId);
+    if (item) {
+      item.amount -= val;
+      if (item.amount <= 0) {
+         state.parcelamentos = state.parcelamentos.filter(i => i.id !== currentPayId);
+         toast("Parcelamento quitado!");
+      } else {
+         toast(`Pago ${fmt(val)}. Saldo atual: ${fmt(item.amount)}`);
+      }
+    }
+  } else {
+    const all = [...state.months[getDbKey()].fixos, ...state.months[getDbKey()].variaveis];
+    item = all.find(i => i.id === currentPayId);
+    if (item) {
+      item.paid_amount = (item.paid_amount || 0) + val;
+      toast(`Pagamento de ${fmt(val)} registrado.`);
+    }
   }
 
-  const db = state.months[getDbKey()];
-  const item = [...db.fixos, ...db.variaveis].find(i => i.id === currentPayId);
-  
-  if(item) {
-    if(!item.paid_amount) item.paid_amount = 0;
-    const remaining = item.amount - item.paid_amount;
-    const finalVal = Math.min(val, remaining);
-    item.paid_amount += finalVal;
-    if(item.paid_amount >= item.amount) item.paid = true;
-
-    save();
-    toggleModal('modal-pay', false);
-    toast(`Pagamento de ${fmt(finalVal)} registrado!`);
-  }
+  save();
+  toggleModal('modal-pay', false);
 }
 
 function addExpense() {
@@ -542,53 +545,44 @@ function addExpense() {
   const cat = document.getElementById('in-cat').value;
   const due = document.getElementById('in-due').value;
 
-  if (!name || isNaN(amount)) {
-    toast("Preencha nome e valor!");
-    return;
-  }
+  if (!name || isNaN(amount)) return;
 
-  const newItem = {
-    id: Date.now(),
-    name,
-    amount,
-    cat,
-    due,
-    paid_amount: 0,
-    paid: false
-  };
+  const newItem = { id: Date.now(), name, amount, cat, due, paid_amount: 0 };
 
-  // Se for na aba Fixos, salva no master para repetir nos próximos meses
   if (currentTab === 'fixos') {
     state.fixosMaster.push({ ...newItem });
+    state.months[getDbKey()].fixos.push({ ...newItem, masterId: newItem.id });
+  } else if (currentTab === 'parcelas') {
+    state.parcelamentos.push(newItem);
+  } else {
+    state.months[getDbKey()].variaveis.push(newItem);
   }
 
-  state.months[getDbKey()][currentTab].push(newItem);
   save();
   toggleModal('modal-add', false);
   clearForm();
-  toast("Gasto adicionado!");
+  toast("Lançamento salvo!");
 }
 
 function deleteItem(id) {
-  const key = getDbKey();
-  const db = state.months[key];
-  
-  // Se for fixo, também removemos do master para não aparecer em meses novos
-  const item = [...db.fixos, ...db.variaveis].find(i => i.id === id);
-  if (item && currentTab === 'fixos') {
-    state.fixosMaster = state.fixosMaster.filter(f => f.name !== item.name);
+  if (currentTab === 'parcelas') {
+    state.parcelamentos = state.parcelamentos.filter(i => i.id !== id);
+  } else {
+    const key = getDbKey();
+    const item = [...state.months[key].fixos, ...state.months[key].variaveis].find(i => i.id === id);
+    if (item && item.masterId) {
+      state.fixosMaster = state.fixosMaster.filter(f => f.id !== item.masterId);
+    }
+    state.months[key].fixos = state.months[key].fixos.filter(i => i.id !== id);
+    state.months[key].variaveis = state.months[key].variaveis.filter(i => i.id !== id);
   }
-
-  db.fixos = db.fixos.filter(i => i.id !== id);
-  db.variaveis = db.variaveis.filter(i => i.id !== id);
   save();
-  toast("Item removido");
+  toast("Removido.");
 }
 
 function switchTab(t) {
   currentTab = t;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`tab-${t}`).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${t}`));
   render();
 }
 
@@ -596,24 +590,18 @@ function changeMonth(step) {
   curMonth += step;
   if (curMonth > 11) { curMonth = 0; curYear++; }
   if (curMonth < 0) { curMonth = 11; curYear--; }
-  syncMonth();
+  syncData();
   render();
 }
 
-function toggleModal(id, open) {
-  document.getElementById(id).classList.toggle('open', open);
-}
-
-function clearForm() {
-  document.getElementById('in-name').value = '';
+function toggleModal(id, open) { document.getElementById(id).classList.toggle('open', open); }
+function clearForm() { 
+  document.getElementById('in-name').value = ''; 
   document.getElementById('in-amount').value = '';
-  document.getElementById('in-due').value = '';
 }
-
 function toast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
