@@ -65,7 +65,7 @@ header {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 15px;
   margin-bottom: 30px;
 }
@@ -79,7 +79,7 @@ header {
 }
 
 .card-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.card-value { font-size: 1.5rem; font-weight: 700; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+.card-value { font-size: 1.4rem; font-weight: 700; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
 
 .nav-bar {
   display: flex;
@@ -136,7 +136,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex-grow: 1; /* Faz a lista empurrar o footer para baixo */
+  flex-grow: 1;
 }
 
 .expense-item {
@@ -186,7 +186,6 @@ header {
 
 .btn-del { color: var(--danger); background: none; border: none; cursor: pointer; padding: 5px; }
 
-/* Estilização do Rodapé */
 footer {
   margin-top: 60px;
   padding: 20px 10px;
@@ -201,7 +200,6 @@ footer {
   letter-spacing: 0.3px;
 }
 
-/* Modais */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -209,7 +207,7 @@ footer {
   backdrop-filter: blur(4px);
   display: none;
   align-items: center;
-  justify- center;
+  justify-content: center;
   z-index: 1000;
   padding: 20px;
 }
@@ -265,6 +263,12 @@ footer {
   </header>
 
   <div class="summary-grid">
+    <!-- NOVO: Monitor de Fixos Pendentes -->
+    <div class="card" style="border-top: 5px solid var(--primary); background: #f1f5f9;">
+      <div class="card-label">Falta Pagar (FIXOS)</div>
+      <div class="card-value" id="res-pending-fixos" style="color: var(--primary);">R$ 0,00</div>
+    </div>
+    
     <div class="card">
       <div class="card-label">Previsto Mês</div>
       <div class="card-value" id="res-total">R$ 0,00</div>
@@ -274,7 +278,7 @@ footer {
       <div class="card-value" id="res-paid" style="color: var(--success);">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--danger);">
-      <div class="card-label">Restante</div>
+      <div class="card-label">Restante Total</div>
       <div class="card-value" id="res-pending" style="color: var(--danger);">R$ 0,00</div>
     </div>
   </div>
@@ -303,7 +307,6 @@ footer {
   </footer>
 </div>
 
-<!-- Modais de Interface -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-header">Novo Lançamento</div>
@@ -432,6 +435,11 @@ function render() {
   
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
+  
+  // Cálculo do que falta pagar apenas dos fixos
+  const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
+  document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
+
   const totalMonth = allCurrent.reduce((s, i) => s + i.amount, 0) + prevDebt;
   const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
   
