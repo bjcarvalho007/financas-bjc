@@ -349,7 +349,6 @@ footer {
   </footer>
 </div>
 
-<!-- Modais e JS permanecem com a lógica atualizada -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-header" id="modal-title">Novo Lançamento</div>
@@ -366,9 +365,9 @@ footer {
       <div class="input-group">
         <label>Categoria</label>
         <select id="in-cat">
-          <option value="moradia">🏠 Moradia</option>
           <option value="mercado">🛒 Mercado</option>
-          <option value="alimentacao">🍕 Alimentação</option>
+          <option value="estetica">✨ Autocuidado & Estética</option>
+          <option value="moradia">🏠 Moradia</option>
           <option value="transporte">🚗 Transporte</option>
           <option value="saude">🏥 Saúde</option>
           <option value="educacao">📚 Educação</option>
@@ -409,9 +408,9 @@ footer {
 <script>
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const CATEGORIES = {
-  moradia: { icon: '🏠', bg: '#eff6ff', color: '#3b82f6' },
   mercado: { icon: '🛒', bg: '#f0fdf4', color: '#16a34a' },
-  alimentacao: { icon: '🍕', bg: '#fff7ed', color: '#f97316' },
+  estetica: { icon: '✨', bg: '#fdf2f8', color: '#db2777' },
+  moradia: { icon: '🏠', bg: '#eff6ff', color: '#3b82f6' },
   transporte: { icon: '🚗', bg: '#fef2f2', color: '#ef4444' },
   saude: { icon: '🏥', bg: '#fff1f2', color: '#e11d48' },
   educacao: { icon: '📚', bg: '#faf5ff', color: '#9333ea' },
@@ -477,21 +476,14 @@ function render() {
   const monthData = state.months[key];
   const prevDebt = getPreviousDebt();
   
-  // LÓGICA DE DÍVIDAS:
-  // 1. Saldo de Parcelamentos (Focado apenas na dívida de longo prazo)
   const parcelasPendente = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
-  
-  // 2. Mês Atual
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
   const totalMonthOnly = allCurrent.reduce((s, i) => s + i.amount, 0);
   const totalMonthWithPrev = totalMonthOnly + prevDebt;
   const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
   const pendingMonth = Math.max(0, totalMonthWithPrev - paidMonth);
-
-  // 3. Dívida Bruta (O que ainda falta pagar no mês + o saldo total de parcelas)
   const bruteTotal = pendingMonth + parcelasPendente;
 
-  // Atualização da UI
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   document.getElementById('res-debt-bruta').textContent = fmt(bruteTotal);
   document.getElementById('res-pending-month').textContent = fmt(pendingMonth);
@@ -552,7 +544,7 @@ function clearForm() {
   document.getElementById('in-name').value = ''; 
   document.getElementById('in-amount').value = '';
   document.getElementById('in-due').value = '';
-  document.getElementById('in-cat').value = 'outros';
+  document.getElementById('in-cat').value = 'mercado';
   document.getElementById('modal-title').textContent = "Novo Lançamento";
 }
 
@@ -657,7 +649,7 @@ function confirmPayment() {
     const item = state.parcelamentos.find(i => i.id === currentPayId);
     if (item) {
       item.amount -= val;
-      if (item.amount <= 0.01) { // Lida com arredondamentos
+      if (item.amount <= 0.01) {
           state.parcelamentos = state.parcelamentos.filter(i => i.id !== currentPayId);
           toast("Parcelamento quitado!");
       } else {
