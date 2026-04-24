@@ -298,10 +298,9 @@ footer {
   </header>
 
   <div class="summary-grid">
-    <!-- PAINEL DE DÍVIDA BRUTA (TOTAL FIXOS + PARCELADOS) -->
     <div class="card debt-total-panel">
       <div>
-        <div class="card-label">Dívida Bruta Total (Fixos Acumulados + Parcelados)</div>
+        <div class="card-label">Dívida Bruta (Fixos Mês + Parcelados)</div>
         <div class="card-value" id="res-debt-bruta">R$ 0,00</div>
       </div>
     </div>
@@ -320,7 +319,7 @@ footer {
       <div class="card-value" id="res-paid" style="color: var(--success);">R$ 0,00</div>
     </div>
     <div class="card" style="border-left: 5px solid var(--danger);">
-      <div class="card-label">Pendente Parcelamentos</div>
+      <div class="card-label">Dívida Parcelada + Mês</div>
       <div class="card-value" id="res-pending" style="color: var(--danger);">R$ 0,00</div>
     </div>
   </div>
@@ -349,7 +348,6 @@ footer {
   </footer>
 </div>
 
-<!-- Modal Unificado de Adição e Edição -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-header" id="modal-title">Novo Lançamento</div>
@@ -472,17 +470,14 @@ function getPreviousDebt() {
   return Math.max(0, total - paid);
 }
 
+// CORRIGIDO: Calcula dívida bruta apenas do mês visualizado + parcelamentos totais
 function calculateBruteDebt() {
-  // Saldo de parcelamentos
   const parcelasTotal = state.parcelamentos.reduce((s, i) => s + i.amount, 0);
-  // Saldo devedor de fixos pendentes em todos os meses registrados
-  let fixosPendentesTotal = 0;
-  Object.keys(state.months).forEach(key => {
-    state.months[key].fixos.forEach(item => {
-      fixosPendentesTotal += (item.amount - (item.paid_amount || 0));
-    });
-  });
-  return parcelasTotal + fixosPendentesTotal;
+  const key = getDbKey();
+  const fixosMes = state.months[key]?.fixos || [];
+  const fixosPendentesMes = fixosMes.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
+  
+  return parcelasTotal + fixosPendentesMes;
 }
 
 function render() {
@@ -495,17 +490,15 @@ function render() {
   document.getElementById('display-date').textContent = `${MONTHS[curMonth]} ${curYear}`;
   const allCurrent = [...monthData.fixos, ...monthData.variaveis];
   
-  // Painel de Dívida Bruta
   document.getElementById('res-debt-bruta').textContent = fmt(bruteTotal);
 
-  // Cards de resumo
   const pendingFixosTotal = monthData.fixos.reduce((s, i) => s + (i.amount - (i.paid_amount || 0)), 0);
   document.getElementById('res-pending-fixos').textContent = fmt(pendingFixosTotal);
 
   const totalMonth = allCurrent.reduce((s, i) => s + i.amount, 0) + prevDebt;
   const paidMonth = allCurrent.reduce((s, i) => s + (i.paid_amount || 0), 0);
   
-  // "Restante Total Mês" agora inclui os parcelados de acordo com sua instrução
+  // "Restante Total Mês" = O que falta no mês atual + Dívida total de parcelamentos
   const restanteMesReal = (totalMonth - paidMonth) + parcelasPendente;
   
   document.getElementById('res-total').textContent = fmt(totalMonth);
